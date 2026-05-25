@@ -1,0 +1,125 @@
+"""
+QuantAdvisor Platform — Core Configuration
+Todas las variables de entorno centralizadas con validación Pydantic.
+"""
+from functools import lru_cache
+from typing import List, Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+    # ─── APP ────────────────────────────────────────────────────────────────
+    APP_NAME: str = "QuantAdvisor"
+    APP_VERSION: str = "0.1.0"
+    ENVIRONMENT: str = "development"          # development | staging | production
+    DEBUG: bool = False
+    SECRET_KEY: str                           # openssl rand -hex 32
+    ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "https://quantadvisor.vercel.app",
+    ]
+
+    # ─── DATABASE ───────────────────────────────────────────────────────────
+    DATABASE_URL: str                         # postgresql+asyncpg://...  (Railway)
+    DATABASE_POOL_SIZE: int = 10
+    DATABASE_MAX_OVERFLOW: int = 20
+
+    # ─── REDIS ──────────────────────────────────────────────────────────────
+    REDIS_URL: str = "redis://localhost:6379/0"  # Railway Redis URL
+    REDIS_SESSION_TTL: int = 3600             # 1 hora
+    REDIS_CACHE_TTL: int = 300               # 5 min default cache
+
+    # ─── AUTH ───────────────────────────────────────────────────────────────
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
+    NEXTAUTH_SECRET: str = ""
+    NEXTAUTH_URL: str = "http://localhost:3000"
+
+    # ─── CLAUDE AI ──────────────────────────────────────────────────────────
+    ANTHROPIC_API_KEY: str
+    CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
+    CLAUDE_MAX_TOKENS: int = 1000
+    CLAUDE_TOKENS_PER_USER_SESSION: int = 5000   # Hard limit por usuario/sesión
+
+    # ─── MARKET DATA ────────────────────────────────────────────────────────
+    # IOL (Invertir Online) — principal para mercado argentino
+    IOL_USERNAME: str = ""
+    IOL_PASSWORD: str = ""
+    IOL_BASE_URL: str = "https://api.invertironline.com"
+
+    # Alpha Vantage — free tier para datos US
+    ALPHA_VANTAGE_API_KEY: str = ""
+    ALPHA_VANTAGE_BASE_URL: str = "https://www.alphavantage.co/query"
+
+    # BCRA — gratuito, datos macro argentinos
+    BCRA_BASE_URL: str = "https://api.bcra.gob.ar"
+
+    # yfinance no necesita key — fallback gratuito
+    YFINANCE_ENABLED: bool = True
+
+    # NewsAPI — free tier para noticias
+    NEWS_API_KEY: str = ""
+    NEWS_API_BASE_URL: str = "https://newsapi.org/v2"
+
+    # ─── PAGOS ──────────────────────────────────────────────────────────────
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+
+    MERCADOPAGO_ACCESS_TOKEN: str = ""
+    MERCADOPAGO_PUBLIC_KEY: str = ""
+    MERCADOPAGO_WEBHOOK_SECRET: str = ""
+
+    # ─── EMAIL ──────────────────────────────────────────────────────────────
+    SMTP_HOST: str = "smtp.resend.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = "noreply@quantadvisor.com"
+    EMAIL_FROM_NAME: str = "QuantAdvisor"
+
+    # ─── RATE LIMITING ──────────────────────────────────────────────────────
+    RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_AI_PER_HOUR: int = 20          # Límite de requests AI por hora/usuario
+    RATE_LIMIT_QUANT_PER_HOUR: int = 10       # Optimizaciones pesadas
+
+    # ─── QUANT ENGINE ───────────────────────────────────────────────────────
+    QUANT_CACHE_TTL_PRICES: int = 300         # 5 min
+    QUANT_CACHE_TTL_FUNDAMENTALS: int = 86400 # 24 hs
+    QUANT_CACHE_TTL_PORTFOLIO: int = 3600     # 1 hora
+    QUANT_MIN_HISTORY_DAYS: int = 252         # 1 año mínimo de historia
+    QUANT_DEFAULT_RISK_FREE_RATE: float = 0.05  # 5% anual (referencia)
+
+    # ─── FEATURE FLAGS ──────────────────────────────────────────────────────
+    FEATURE_MONTE_CARLO: bool = True
+    FEATURE_BACKTESTING: bool = False         # Fase 3
+    FEATURE_REAL_TIME_SIGNALS: bool = False   # Fase 2
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+
+    @property
+    def is_development(self) -> bool:
+        return self.ENVIRONMENT == "development"
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Singleton — se cachea al primer acceso."""
+    return Settings()
+
+
+settings = get_settings()

@@ -36,6 +36,9 @@ RUN pip install --no-cache-dir --no-index --find-links /wheels /wheels/*.whl
 # Copiar cÃ³digo
 COPY --chown=appuser:appuser . .
 
+COPY start.sh .
+RUN chmod +x start.sh
+
 USER appuser
 
 EXPOSE 8000
@@ -44,10 +47,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-COPY start.sh .
-RUN chmod +x start.sh
-
 CMD ["sh", "start.sh"]
 
 
 # force rebuild 202605250548
+

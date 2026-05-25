@@ -40,7 +40,7 @@ pandas-datareader==0.10.0
 
 # â”€â”€â”€ NLP / Sentiment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 transformers==4.44.2
---index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.4.1+cpu
 sentencepiece==0.2.0
 
@@ -70,4 +70,5 @@ black==24.8.0
 ruff==0.6.9
 mypy==1.11.2
 pre-commit==3.8.0
+
 

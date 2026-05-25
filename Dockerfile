@@ -1,4 +1,4 @@
-# ─── Stage 1: Builder ────────────────────────────────────────────────────────
+﻿# â”€â”€â”€ Stage 1: Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 FROM python:3.12-slim AS builder
 
 WORKDIR /app
@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
-# ─── Stage 2: Runtime ────────────────────────────────────────────────────────
+# â”€â”€â”€ Stage 2: Runtime â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 FROM python:3.12-slim AS runtime
 
 WORKDIR /app
@@ -33,7 +33,7 @@ RUN useradd --create-home --shell /bin/bash appuser
 COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir --no-index --find-links /wheels /wheels/*.whl
 
-# Copiar código
+# Copiar cÃ³digo
 COPY --chown=appuser:appuser . .
 
 USER appuser
@@ -44,4 +44,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
+

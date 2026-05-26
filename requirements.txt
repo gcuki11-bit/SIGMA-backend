@@ -72,3 +72,5 @@ mypy==1.11.2
 pre-commit==3.8.0
 
 
+
+email-validator==2.1.0

@@ -95,34 +95,43 @@ async def activate_plan(
         if provided != settings.INTERNAL_WEBHOOK_SECRET:
             raise HTTPException(status_code=401, detail="Unauthorized")
 
-    # Find user by email
-    result = await db.execute(select(User).where(User.email == payload.email))
-    user = result.scalar_one_or_none()
+    try:
+        # Find user by email
+        result = await db.execute(select(User).where(User.email == payload.email))
+        user = result.scalar_one_or_none()
+    except Exception as e:
+        logger.error(f"[activate] DB query error: {e}")
+        raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
+
     if not user:
         logger.warning(f"[activate] user not found for email={payload.email}")
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Deactivate any existing active subscription
-    existing = await db.execute(
-        select(Subscription).where(
-            Subscription.user_id == user.id,
-            Subscription.status.in_(["active", "trialing"]),
+    try:
+        # Deactivate any existing active subscription
+        existing = await db.execute(
+            select(Subscription).where(
+                Subscription.user_id == user.id,
+                Subscription.status.in_(["active", "trialing"]),
+            )
         )
-    )
-    for old_sub in existing.scalars().all():
-        old_sub.status = "expired"
+        for old_sub in existing.scalars().all():
+            old_sub.status = "expired"
 
-    # Create new subscription
-    sub = Subscription(
-        user_id=user.id,
-        plan_type=payload.plan,
-        billing_period=payload.billing,
-        status="active",
-        current_period_start=datetime.now(timezone.utc),
-    )
-    db.add(sub)
-    await db.commit()
-    await db.refresh(sub)
+        # Create new subscription
+        sub = Subscription(
+            user_id=user.id,
+            plan_type=payload.plan,
+            billing_period=payload.billing,
+            status="active",
+            current_period_start=datetime.now(timezone.utc),
+        )
+        db.add(sub)
+        await db.commit()
+        await db.refresh(sub)
+    except Exception as e:
+        logger.error(f"[activate] DB write error: {e}")
+        raise HTTPException(status_code=503, detail=f"Database write error: {str(e)}")
 
     logger.info(
         f"[activate] plan activated: user={user.id} email={payload.email} "

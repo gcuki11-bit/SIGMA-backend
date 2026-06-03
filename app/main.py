@@ -32,8 +32,11 @@ async def lifespan(app: FastAPI):
     """Startup y shutdown del servidor."""
     logger.info(f"QuantAdvisor v{settings.APP_VERSION} starting [{settings.ENVIRONMENT}]")
 
-    await init_db()
-    logger.info(f"DB initialized [{settings.ENVIRONMENT}]")
+    try:
+        await init_db()
+        logger.info(f"DB initialized [{settings.ENVIRONMENT}]")
+    except Exception as e:
+        logger.error(f"DB init failed (app continues): {e}")
 
     yield
 

@@ -17,7 +17,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_SQLITE_URL = "sqlite+aiosqlite:///./sigma.db"
+_SQLITE_URL = "sqlite+aiosqlite:////tmp/sigma.db"
 
 
 def _make_async_engine(url: str):

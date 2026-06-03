@@ -32,9 +32,8 @@ async def lifespan(app: FastAPI):
     """Startup y shutdown del servidor."""
     logger.info(f"QuantAdvisor v{settings.APP_VERSION} starting [{settings.ENVIRONMENT}]")
 
-    if settings.is_development:
-        await init_db()
-        logger.info("DB initialized (dev mode)")
+    await init_db()
+    logger.info(f"DB initialized [{settings.ENVIRONMENT}]")
 
     yield
 

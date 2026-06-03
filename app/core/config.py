@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     MERCADOPAGO_PUBLIC_KEY: str = ""
     MERCADOPAGO_WEBHOOK_SECRET: str = ""
 
+    # Internal secret for Vercel→Railway webhook calls (optional; set to enable auth)
+    INTERNAL_WEBHOOK_SECRET: str = ""
+
     # â”€â”€â”€ EMAIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     SMTP_HOST: str = "smtp.resend.com"
     SMTP_PORT: int = 587

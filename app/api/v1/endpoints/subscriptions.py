@@ -50,6 +50,13 @@ class CancelRequest(BaseModel):
     reason: Optional[str] = None
 
 
+class ActivateRequest(BaseModel):
+    email: str
+    plan: str
+    billing: str = "monthly"
+    provider: str = "stripe"
+
+
 # ─── Routes ──────────────────────────────────────────────────────────────────
 
 @router.get("/plans")
@@ -70,6 +77,59 @@ async def list_plans():
         "founder_beta_active": True,
         "disclaimer": "Precios en pesos argentinos. Incluye IVA.",
     }
+
+
+@router.post("/activate", include_in_schema=False)
+async def activate_plan(
+    payload: ActivateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Internal endpoint — called by Vercel webhook after Stripe payment confirmed.
+    Creates or updates the user's subscription in the DB.
+    """
+    # Optional internal secret check
+    if settings.INTERNAL_WEBHOOK_SECRET:
+        provided = request.headers.get("X-Webhook-Secret", "")
+        if provided != settings.INTERNAL_WEBHOOK_SECRET:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Find user by email
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
+    if not user:
+        logger.warning(f"[activate] user not found for email={payload.email}")
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Deactivate any existing active subscription
+    existing = await db.execute(
+        select(Subscription).where(
+            Subscription.user_id == user.id,
+            Subscription.status.in_(["active", "trialing"]),
+        )
+    )
+    for old_sub in existing.scalars().all():
+        old_sub.status = "expired"
+
+    # Create new subscription
+    sub = Subscription(
+        user_id=user.id,
+        plan_type=payload.plan,
+        billing_period=payload.billing,
+        status="active",
+        current_period_start=datetime.now(timezone.utc),
+    )
+    db.add(sub)
+    await db.commit()
+    await db.refresh(sub)
+
+    logger.info(
+        f"[activate] plan activated: user={user.id} email={payload.email} "
+        f"plan={payload.plan} billing={payload.billing} provider={payload.provider}"
+    )
+
+    return {"success": True, "user_id": user.id, "subscription_id": sub.id}
 
 
 @router.get("/me")

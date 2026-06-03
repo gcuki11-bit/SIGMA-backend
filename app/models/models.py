@@ -9,9 +9,8 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     BigInteger, Boolean, DateTime, Float, ForeignKey,
-    Integer, String, Text, UniqueConstraint, func,
+    Integer, JSON, String, Text, UniqueConstraint, func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -31,7 +30,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), primary_key=True, default=generate_uuid
+        String(36), primary_key=True, default=generate_uuid
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255))  # None si OAuth
@@ -85,9 +84,9 @@ class User(Base):
 class InvestorProfile(Base):
     __tablename__ = "investor_profiles"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     user_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"),
+        String(36), ForeignKey("users.id", ondelete="CASCADE"),
         unique=True, nullable=False, index=True
     )
 
@@ -111,19 +110,19 @@ class InvestorProfile(Base):
     liquidity_need: Mapped[str] = mapped_column(String(20), default="low")  # low|medium|high
     esg_preference: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # Restricciones personalizadas (JSONB para flexibilidad)
-    excluded_sectors: Mapped[Optional[Dict]] = mapped_column(JSONB, default=list)
-    excluded_countries: Mapped[Optional[Dict]] = mapped_column(JSONB, default=list)
-    excluded_tickers: Mapped[Optional[Dict]] = mapped_column(JSONB, default=list)
-    preferred_sectors: Mapped[Optional[Dict]] = mapped_column(JSONB, default=list)
+    # Restricciones personalizadas (JSON para flexibilidad)
+    excluded_sectors: Mapped[Optional[Dict]] = mapped_column(JSON, default=list)
+    excluded_countries: Mapped[Optional[Dict]] = mapped_column(JSON, default=list)
+    excluded_tickers: Mapped[Optional[Dict]] = mapped_column(JSON, default=list)
+    preferred_sectors: Mapped[Optional[Dict]] = mapped_column(JSON, default=list)
 
     # Respuestas crudas del cuestionario (para recalcular si cambia la lógica)
-    questionnaire_responses: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    questionnaire_responses: Mapped[Optional[Dict]] = mapped_column(JSON)
     questionnaire_version: Mapped[str] = mapped_column(String(10), default="1.0")
 
     # AI Portfolio Health Score (calculado periódicamente)
     health_score: Mapped[Optional[int]] = mapped_column(Integer)             # 0-100
-    health_score_breakdown: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    health_score_breakdown: Mapped[Optional[Dict]] = mapped_column(JSON)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -140,9 +139,9 @@ class InvestorProfile(Base):
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     user_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"),
+        String(36), ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False, index=True
     )
 
@@ -188,9 +187,9 @@ class Subscription(Base):
 class Invoice(Base):
     __tablename__ = "invoices"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     subscription_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=False
+        String(36), ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=False
     )
     amount_ars: Mapped[float] = mapped_column(Float, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)  # paid | unpaid | void
@@ -225,14 +224,14 @@ class Asset(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_operable_from_argentina: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Datos fundamentales cacheados (JSONB)
-    fundamental_data: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    # Datos fundamentales cacheados (JSON)
+    fundamental_data: Mapped[Optional[Dict]] = mapped_column(JSON)
     # Datos técnicos cacheados
-    technical_data: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    technical_data: Mapped[Optional[Dict]] = mapped_column(JSON)
     # Métricas de liquidez
-    liquidity_data: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    liquidity_data: Mapped[Optional[Dict]] = mapped_column(JSON)
     # Para bonos: YTM, duration, convexity, riesgo crediticio
-    bond_data: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    bond_data: Mapped[Optional[Dict]] = mapped_column(JSON)
 
     last_price: Mapped[Optional[float]] = mapped_column(Float)
     last_price_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
@@ -250,9 +249,9 @@ class Asset(Base):
 class Portfolio(Base):
     __tablename__ = "portfolios"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     user_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"),
+        String(36), ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False, index=True
     )
 
@@ -285,7 +284,7 @@ class Portfolio(Base):
 
     # Health Score
     health_score: Mapped[Optional[int]] = mapped_column(Integer)
-    health_breakdown: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    health_breakdown: Mapped[Optional[Dict]] = mapped_column(JSON)
 
     # Estado del rebalanceo
     last_rebalanced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
@@ -315,9 +314,9 @@ class Position(Base):
         UniqueConstraint("portfolio_id", "ticker", name="uq_portfolio_ticker"),
     )
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     portfolio_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("portfolios.id", ondelete="CASCADE"),
+        String(36), ForeignKey("portfolios.id", ondelete="CASCADE"),
         nullable=False, index=True
     )
     ticker: Mapped[str] = mapped_column(
@@ -351,9 +350,9 @@ class Position(Base):
 class RebalanceEvent(Base):
     __tablename__ = "rebalance_events"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     portfolio_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("portfolios.id", ondelete="CASCADE"),
+        String(36), ForeignKey("portfolios.id", ondelete="CASCADE"),
         nullable=False, index=True
     )
 
@@ -362,12 +361,12 @@ class RebalanceEvent(Base):
     trigger_detail: Mapped[Optional[str]] = mapped_column(Text)
 
     # Pesos antes y después
-    old_weights: Mapped[Optional[Dict]] = mapped_column(JSONB)
-    new_weights: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    old_weights: Mapped[Optional[Dict]] = mapped_column(JSON)
+    new_weights: Mapped[Optional[Dict]] = mapped_column(JSON)
 
     # Métricas antes/después
-    metrics_before: Mapped[Optional[Dict]] = mapped_column(JSONB)
-    metrics_after: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    metrics_before: Mapped[Optional[Dict]] = mapped_column(JSON)
+    metrics_after: Mapped[Optional[Dict]] = mapped_column(JSON)
 
     # Explicación generada por Claude
     ai_explanation: Mapped[Optional[str]] = mapped_column(Text)
@@ -385,7 +384,7 @@ class RebalanceEvent(Base):
 class NewsSignal(Base):
     __tablename__ = "news_signals"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     source: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     source_url: Mapped[Optional[str]] = mapped_column(String(512))
     headline: Mapped[str] = mapped_column(Text, nullable=False)
@@ -403,9 +402,9 @@ class NewsSignal(Base):
     event_category: Mapped[Optional[str]] = mapped_column(String(30), index=True)
 
     # Activos y sectores afectados
-    affected_tickers: Mapped[Optional[Dict]] = mapped_column(JSONB, default=list)
-    affected_sectors: Mapped[Optional[Dict]] = mapped_column(JSONB, default=list)
-    affected_countries: Mapped[Optional[Dict]] = mapped_column(JSONB, default=list)
+    affected_tickers: Mapped[Optional[Dict]] = mapped_column(JSON, default=list)
+    affected_sectors: Mapped[Optional[Dict]] = mapped_column(JSON, default=list)
+    affected_countries: Mapped[Optional[Dict]] = mapped_column(JSON, default=list)
 
     # Recomendación de rebalanceo generada
     rebalance_recommendation: Mapped[Optional[str]] = mapped_column(Text)
@@ -426,9 +425,9 @@ class AISession(Base):
     """
     __tablename__ = "ai_sessions"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     user_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"),
+        String(36), ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False, index=True
     )
 
@@ -458,12 +457,12 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     user_id: Mapped[Optional[str]] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.id"), index=True
+        String(36), ForeignKey("users.id"), index=True
     )
     action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     resource_type: Mapped[Optional[str]] = mapped_column(String(50))
     resource_id: Mapped[Optional[str]] = mapped_column(String(255))
-    details: Mapped[Optional[Dict]] = mapped_column(JSONB)
+    details: Mapped[Optional[Dict]] = mapped_column(JSON)
     ip_address: Mapped[Optional[str]] = mapped_column(String(45))
     user_agent: Mapped[Optional[str]] = mapped_column(String(512))
     created_at: Mapped[datetime] = mapped_column(

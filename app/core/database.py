@@ -1,6 +1,6 @@
 """
 QuantAdvisor — Database Engine y Session Factory (async SQLAlchemy 2.x)
-Auto-falls back to SQLite when PostgreSQL is unavailable.
+Auto-falls back: DATABASE_URL → DATABASE_PUBLIC_URL → SQLite.
 """
 import logging
 from typing import AsyncGenerator
@@ -84,21 +84,39 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # ─── Init DB ─────────────────────────────────────────────────────────────────
 
 async def init_db() -> None:
-    """Create all tables. Auto-falls back to SQLite on any PostgreSQL error."""
+    """Create all tables. Falls back: DATABASE_URL → DATABASE_PUBLIC_URL → SQLite."""
     global engine, AsyncSessionLocal
     from app.models.models import Base  # noqa: F401
 
+    # Try primary DATABASE_URL
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        logger.info(f"DB init OK [{settings.DATABASE_URL[:30]}...]")
+        logger.info(f"DB init OK (primary) [{settings.DATABASE_URL[:40]}...]")
+        return
     except Exception as e:
-        if not settings.DATABASE_URL.startswith("sqlite"):
-            logger.error(f"PostgreSQL init failed ({e}) — switching to SQLite fallback")
-            engine = _make_async_engine(_SQLITE_URL)
-            AsyncSessionLocal = _make_session_factory(engine)
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-            logger.info("SQLite fallback initialized at sigma.db")
-        else:
+        if settings.DATABASE_URL.startswith("sqlite"):
             raise
+        logger.error(f"Primary DB failed ({type(e).__name__}: {e})")
+
+    # Try DATABASE_PUBLIC_URL (Railway public endpoint with correct credentials)
+    if settings.DATABASE_PUBLIC_URL:
+        try:
+            logger.info(f"Trying DATABASE_PUBLIC_URL [{settings.DATABASE_PUBLIC_URL[:40]}...]")
+            pub_engine = _make_async_engine(settings.DATABASE_PUBLIC_URL)
+            async with pub_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            engine = pub_engine
+            AsyncSessionLocal = _make_session_factory(engine)
+            logger.info("DB init OK (DATABASE_PUBLIC_URL)")
+            return
+        except Exception as e2:
+            logger.error(f"DATABASE_PUBLIC_URL also failed ({type(e2).__name__}: {e2})")
+
+    # Final fallback: SQLite
+    logger.error("Both PostgreSQL URLs failed — switching to SQLite fallback")
+    engine = _make_async_engine(_SQLITE_URL)
+    AsyncSessionLocal = _make_session_factory(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("SQLite fallback initialized at /tmp/sigma.db")

@@ -26,7 +26,8 @@ class Settings(BaseSettings):
     ]
 
     # â”€â”€â”€ DATABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    DATABASE_URL: str = "sqlite+aiosqlite:///./sigma.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:////tmp/sigma.db"
+    DATABASE_PUBLIC_URL: str = ""   # Railway public PostgreSQL URL (fallback if DATABASE_URL auth fails)
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 

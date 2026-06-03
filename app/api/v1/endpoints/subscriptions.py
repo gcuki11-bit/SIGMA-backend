@@ -104,8 +104,22 @@ async def activate_plan(
         raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
 
     if not user:
-        logger.warning(f"[activate] user not found for email={payload.email}")
-        raise HTTPException(status_code=404, detail="User not found")
+        logger.warning(f"[activate] user not found for email={payload.email} — creating minimal record")
+        try:
+            import uuid as _uuid
+            user = User(
+                id=str(_uuid.uuid4()),
+                email=payload.email,
+                role="user",
+                is_active=True,
+                is_email_verified=False,
+            )
+            db.add(user)
+            await db.flush()
+            await db.refresh(user)
+        except Exception as e:
+            logger.error(f"[activate] failed to create user: {e}")
+            raise HTTPException(status_code=503, detail=f"Could not create user: {str(e)}")
 
     try:
         # Deactivate any existing active subscription

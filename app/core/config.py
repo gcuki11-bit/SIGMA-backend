@@ -126,7 +126,4 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-# Asegurar que DATABASE_URL usa asyncpg
-if settings.DATABASE_URL and not settings.DATABASE_URL.startswith("postgresql+asyncpg"):
-    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1).replace("postgres://", "postgresql+asyncpg://", 1)
 

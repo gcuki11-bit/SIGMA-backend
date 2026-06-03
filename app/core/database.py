@@ -1,8 +1,10 @@
 """
 QuantAdvisor — Database Engine y Session Factory (async SQLAlchemy 2.x)
 """
+import logging
 from typing import AsyncGenerator
 
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -11,10 +13,26 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
+
+def _build_async_url(raw_url: str) -> str:
+    """Convert any postgres:// / postgresql:// URL to postgresql+asyncpg://."""
+    try:
+        parsed = make_url(raw_url)
+        if parsed.drivername in ("postgresql", "postgres"):
+            parsed = parsed.set(drivername="postgresql+asyncpg")
+        logger.info(f"DB driver: {parsed.drivername} host={parsed.host} db={parsed.database}")
+        return str(parsed)
+    except Exception as e:
+        logger.error(f"Failed to parse DATABASE_URL: {e} — using raw value")
+        return raw_url
+
+
 # ─── Engine ──────────────────────────────────────────────────────────────────
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _build_async_url(settings.DATABASE_URL),
     pool_size=settings.DATABASE_POOL_SIZE,
     max_overflow=settings.DATABASE_MAX_OVERFLOW,
     pool_pre_ping=True,          # Valida conexiones antes de usar

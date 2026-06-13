@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "https://quantadvisor.vercel.app",
+        "https://sigma-one-flame.vercel.app",  # Production Vercel deployment
     ]
 
     # â”€â”€â”€ DATABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -122,9 +123,8 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    """Singleton â€” se cachea al primer acceso."""
+    """Singleton — se cachea al primer acceso."""
     return Settings()
 
 
 settings = get_settings()
-

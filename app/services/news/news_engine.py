@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.models import NewsSignal
+from app.services.news.finnhub_news import FinnhubNewsIngester, is_market_relevant
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +321,7 @@ class NewsService:
 
     def __init__(self):
         self.ingester = NewsIngester()
+        self.finnhub_ingester = FinnhubNewsIngester()
         self.analyzer = FinBERTAnalyzer()
         self.classifier = ImpactClassifier()
         self.signal_generator = RebalanceSignalGenerator()
@@ -329,12 +331,14 @@ class NewsService:
         Procesa un batch de noticias (llamado por Celery Beat cada 15 min).
         Retorna número de señales nuevas creadas.
         """
-        # Obtener noticias
+        # Obtener noticias: NewsAPI (es/en) + Finnhub (mercado, con licencia)
         articles_es = await self.ingester.fetch_financial_news()
         articles_en = await self.ingester.fetch_english_news()
-        all_articles = articles_es + articles_en
+        articles_finnhub = await self.finnhub_ingester.fetch_market_news(max_results=50)
+        all_articles = articles_es + articles_en + articles_finnhub
 
         new_signals = 0
+        filtered_out = 0
 
         for article in all_articles:
             try:
@@ -364,6 +368,19 @@ class NewsService:
 
                 # Clasificación
                 classification = self.classifier.classify(headline, body, sentiment)
+
+                # Sembrar tickers provistos por la fuente (Finnhub 'related')
+                related = article.get("related_tickers") or []
+                if related:
+                    merged = list(dict.fromkeys(
+                        (classification.get("affected_tickers") or []) + related
+                    ))
+                    classification["affected_tickers"] = merged[:10]
+
+                # FILTRO: solo guardar noticias con incidencia en el mercado
+                if not is_market_relevant(headline, classification, sentiment):
+                    filtered_out += 1
+                    continue
 
                 # Parsear fecha
                 published_at = None
@@ -398,7 +415,10 @@ class NewsService:
                 continue
 
         await db.flush()
-        logger.info(f"News batch processed: {new_signals} new signals from {len(all_articles)} articles")
+        logger.info(
+            "News batch: %s señales nuevas, %s descartadas por irrelevancia, de %s artículos",
+            new_signals, filtered_out, len(all_articles),
+        )
         return new_signals
 
     async def get_recent_signals(

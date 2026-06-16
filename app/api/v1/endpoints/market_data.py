@@ -47,6 +47,44 @@ async def get_quote(
         return {"ticker": ticker, "error": str(e)}
 
 
+@router.get("/quote-live/{ticker}")
+async def get_quote_live(
+    ticker: str,
+    asset_type: str = Query("us_equity"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cotizacion normalizada con failover y metadata de calidad (provenance)."""
+    return await market_data_service.get_quote(ticker.upper(), asset_type)
+
+
+@router.get("/ohlc/{ticker}")
+async def get_ohlc(
+    ticker: str,
+    asset_type: str = Query("us_equity"),
+    days: int = Query(365, ge=30, le=2000),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Serie OHLCV lista para TradingView Lightweight Charts (+ provenance)."""
+    try:
+        return await market_data_service.get_ohlc(ticker.upper(), asset_type, days=days)
+    except Exception as e:  # noqa: BLE001
+        return {"symbol": ticker.upper(), "candles": [], "volume": [],
+                "provenance": None, "error": str(e)}
+
+
+@router.get("/providers/health")
+async def providers_health(
+    current_user: User = Depends(get_current_user),
+):
+    """Estado de la capa de proveedores (failover / circuit breakers)."""
+    try:
+        return {"providers": market_data_service.router.health()}
+    except Exception as e:  # noqa: BLE001
+        return {"providers": [], "error": str(e)}
+
+
 @router.get("/fundamentals/{ticker}")
 async def get_fundamentals(
     ticker: str,

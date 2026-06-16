@@ -206,6 +206,57 @@ class MarketDataService:
         self.redis = redis
         self.iol = IOLClient()
         self.bcra = BCRAClient()
+        self._router = None  # lazy: capa de proveedores con failover
+
+    @property
+    def router(self):
+        """ProviderRouter lazy (Finnhub/CoinGecko/yfinance con failover)."""
+        if self._router is None:
+            from app.services.market_data.providers import ProviderRouter
+            self._router = ProviderRouter()
+        return self._router
+
+    # ─── Quote / OHLC normalizados (nueva capa) ───────────────────────────────
+
+    async def get_quote(self, ticker: str, asset_type: str) -> dict:
+        """
+        Cotizacion puntual normalizada con metadata de calidad (provenance).
+        Usa el ProviderRouter; cae a IOL para activos argentinos.
+        """
+        from app.services.market_data.providers import AssetClass
+
+        ac = AssetClass.from_legacy(asset_type)
+        if getattr(settings, "FEATURE_PROVIDER_ROUTER", True):
+            try:
+                q = await self.router.get_quote(ticker, ac)
+                return q.to_dict()
+            except Exception as e:  # noqa: BLE001
+                logger.warning("router get_quote fallo para %s: %s", ticker, e)
+        # Fallback IOL (mercado AR)
+        if ac.value in ("cedear", "ar_equity", "bond"):
+            cot = await self.iol.get_cotizacion(ticker)
+            if cot:
+                return {"symbol": ticker, "price": cot.get("ultimoPrecio"),
+                        "currency": "ARS", "provenance": {"provider": "iol"}}
+        return {"symbol": ticker, "price": None, "provenance": None}
+
+    async def get_ohlc(self, ticker: str, asset_type: str, days: int = 365) -> dict:
+        """
+        Serie OHLCV en formato listo para TradingView Lightweight Charts.
+        Devuelve {candles, volume, provenance}.
+        """
+        from app.services.market_data.providers import AssetClass
+
+        ac = AssetClass.from_legacy(asset_type)
+        hist = await self.router.get_history(ticker, ac, days=days)
+        candles = hist.candles()
+        return {
+            "symbol": ticker,
+            "candles": [{"time": c["time"], "open": c["open"], "high": c["high"],
+                         "low": c["low"], "close": c["close"]} for c in candles],
+            "volume": [{"time": c["time"], "value": c["value"]} for c in candles],
+            "provenance": hist.provenance.to_dict() if hist.provenance else None,
+        }
 
     # ─── Prices ──────────────────────────────────────────────────────────────
 

@@ -71,6 +71,18 @@ class Settings(BaseSettings):
     # yfinance no necesita key â€” fallback gratuito
     YFINANCE_ENABLED: bool = True
 
+    # Finnhub â€” acciones US / forex / cripto (real-time, redistribuible en plan pago)
+    FINNHUB_API_KEY: str = ""
+
+    # CoinGecko â€” cripto (funciona sin key; key Demo/Pro sube rate limit)
+    COINGECKO_API_KEY: str = ""
+
+    # TwelveData â€” multi-asset opcional (forex/commodities/equities)
+    TWELVEDATA_API_KEY: str = ""
+
+    # Activa la nueva capa de proveedores con failover. Si False, usa el path legacy.
+    FEATURE_PROVIDER_ROUTER: bool = True
+
     # NewsAPI â€” free tier para noticias
     NEWS_API_KEY: str = ""
     NEWS_API_BASE_URL: str = "https://newsapi.org/v2"

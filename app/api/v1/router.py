@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     market_data,
     news,
     ai_advisor,
+    attribution,
 )
 
 api_router = APIRouter()
@@ -36,3 +37,6 @@ api_router.include_router(news.router, prefix="/news", tags=["News & Signals"])
 
 # AI Advisor
 api_router.include_router(ai_advisor.router, prefix="/ai", tags=["AI Advisor"])
+
+# Factor & Risk Attribution
+api_router.include_router(attribution.router, prefix="/attribution", tags=["Attribution"])
